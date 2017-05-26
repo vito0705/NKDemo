@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ECharts</title>
+
+
+  <script src="/echarts.js"></script>
+
+</head>
+<body>
+<!-- 为ECharts准备一个具备大小（宽高）的Dom -->
+<!--&lt;!&ndash;-->
+<div id="current" style="display: inline-block;width: 800px;height:600px;"></div>
+
+    <script type="text/javascript">
+        var line_id;
+        var speed_chart = echarts.init(document.getElementById('current'));
+
+        speed_chart.showLoading({
+            text: "加载中...请等待"
+        });
+        speed_chart.hideLoading();
+        var x_time_value = [];
+        var y_speed_value = [];
+
+        function get_current_spped(){
+            $.get('nyiots/get_current_speed', {"name": "<%= @name_speed %>", "gps1": "<%= @gps1%>" , "gps2": "<%= @gps2%>"}).done(function (point_data){
+                x_time_value.shift();
+                x_time_value.push(point_data["real_time"][0]);
+                //              alert(point_data["real_time"][1]);
+                y_speed_value.shift();
+                y_speed_value.push(point_data["real_time"][1])
+            });
+            speed_chart.setOption(speed_option)
+        }
+
+        $.get('nyiots/get_history_speed', {"name": "<%= @name_speed %>", "gps1": "<%= @gps1%>" , "gps2": "<%= @gps2%>"}).done(function (point_data) {
+            p_value = point_data["data"];
+    //        p_date = point_data["time"].replace(/-/g,"/");
+    //        speed_time = new Date(p_date);//将字符串转化为时间
+    //        p_time_value = speed_time.toLocaleTimeString().replace(/^\D*/,'');
+    //        p_time = speed_time.toLocaleString();
+
+
+            for(var i=0;i<p_value.length;i++){
+                x_time_value[i] = p_value[i]["time"];
+                y_speed_value[i] = p_value[i]["value"]
+            }
+
+
+            speed_option = {
+                title: {      //标题组件
+                    text: point_data["name"]  + "采集速率图"
+                },
+    //            backgroundColor: '#404a59',
+                tooltip: {    //提示框组件
+                    trigger: 'axis'
+                },
+
+                legend: {     //图例组件
+                    data: ['采集速率']
+                },
+
+                grid: {       //直角坐标系内绘图网格
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+
+                toolbox: {     //工具栏
+                    feature: {
+                        saveAsImage: {}
+                    }
+
+                },
+
+                xAxis: {       //直角坐标系 grid 中的 x 轴
+                    type: 'category',
+                    boundaryGap: false,
+                    splitLine: {
+                        show: true
+                    },
+                    data: x_time_value
+
+                },
+
+                yAxis: {       //直角坐标系 grid 中的 y 轴
+                    type: 'value',
+                    boundaryGap: [0, '10%']
+                },
+                dataZoom: [{
+                    type: 'inside'
+
+                }],
+
+                series: [      //系列列表
+                    {
+                        name: '采集速率',
+                        type: 'line',
+//                        stack: 'speed',
+                        smooth:true,
+                        areaStyle: {
+                            normal: {
+                                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{
+                                    offset: 0,
+                                    color: 'rgb(255, 158, 68)'
+                                }, {
+                                    offset: 1,
+                                    color: 'rgb(255, 70, 131)'
+                                }])
+                            }
+                        },
+                        data: y_speed_value
+                    }
+                ]
+            };
+                speed_chart.setOption(speed_option);
+
+//            function get_current_spped(){
+//              $.get('nyiots/get_current_speed', {"name": "<%= @name_speed %>", "gps1": "<%= @gps1%>" , "gps2": "<%= @gps2%>"}).done(function (point_data){
+//                  x_time_value.shift();
+//                  x_time_value.push(point_data["real_time"][0]);
+//    //              alert(point_data["real_time"][1]);
+//                  y_speed_value.shift();
+//                  y_speed_value.push(point_data["real_time"][1])
+//              });
+//                speed_chart.setOption(speed_option)
+//            }
+            line_id = setInterval(get_current_spped,1000)
+        })
+
+    </script>
+<!--&ndash;&gt;-->
+<!--&lt;!&ndash;-->
+<div id="main" style="display: inline-block; width: 800px;height:600px;"></div>
+    <script type="text/javascript">
+        var gauge_id;
+        var value_chart = echarts.init(document.getElementById('main'));
+
+        value_chart.showLoading({
+            text: "加载中...请等待"
+        });
+        value_chart.hideLoading();
+
+
+
+        value_option = {
+            tooltip : {
+                formatter: "{a} <br/>{b} : {c}"
+            },
+            toolbox: {
+                feature: {
+                    restore: {},
+                    saveAsImage: {}
+                }
+            },
+            series: [
+                {
+                    name: '当前速率',
+                    type: 'gauge',
+                    min: 0,
+                    max: 100,
+                    detail: {formatter:'当前速率'},
+                    data: [{value: "<%= @value%>", name: '次/秒'}]
+                }
+            ]
+        };
+
+
+        value_chart.setOption(value_option,true );
+
+        function get_current_value(){
+            $.get('nyiots/get_current_speed', {"name": "<%= @name_speed %>", "gps1": "<%= @gps1%>" , "gps2": "<%= @gps2%>"}).done(function (point_data){
+                value_option.series[0].data[0].value = point_data["real_time"][1];
+
+            });
+            value_chart.setOption(value_option)
+        }
+
+        gauge_id = setInterval(get_current_value,1000)
+
+    </script>
+<!--&ndash;&gt;-->
+<div id="maininterval" style="display: inline-block; width: 50px;height:10px;">
+  <button type="button" id="interval" >暂停</button>
+  <button type="button" id="begin" >开始</button>
+</div>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("#interval").click(function () {
+           clearInterval(line_id);
+           clearInterval(gauge_id)
+        });
+
+        $("#begin").click(function () {
+            line_id = setInterval(get_current_spped,1000);
+            gauge_id = setInterval(get_current_value, 1000)
+        });
+    });
+//    setInterval(get_current_value,1000)
+
+</script>
+
+</body>
+</html>
